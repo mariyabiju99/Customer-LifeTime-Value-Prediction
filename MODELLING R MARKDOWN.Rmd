@@ -1,0 +1,272 @@
+# Importing Libraries
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(mlflow)
+library(glmnet)
+library(carrier)
+library(rsample)
+library(recipes)
+library(skimr)
+library(knitr) 
+pacman::p_load(lubridate, xgboost,Matrix,Metrics,tidyverse, reshape,dplyr,ggplot2,moments,corrplot,caTools,car,caret,ROCR,earth,ROSE)
+
+
+```
+# The data set has 26 attributes and 9134 records. It has no missing values and the dependent variable is the attribute: CLV,standing for customer lifetime value. The description of 26 attributes along with their nature(numerical, categorical, answer, question, link)
+
+# Loading the dataset
+```{r}
+df <- read.csv(  file="C:\\Users\\chand\\Downloads\\Marketing-Customer-Value-Analysis.csv",header=TRUE,
+                 sep=",")
+
+```
+# Checking Dimension of the dataset
+```{r}
+glimpse(df)
+dim(df)
+sum(is.na(df))
+sapply(df, class)
+```
+
+# Use Quantile  which is a frequency distribution  function used to detect whether those Outliers  has been occured from and remove them by applied neccessary conditions to made those variables to a normal observative and made them for next operation.
+
+```{r}
+OutlierManagement <- function(x){
+  quantiles <- quantile( x, c(.00, .97 ) )
+  x[ x < quantiles[1] ] <- quantiles[1]
+  x[ x > quantiles[2] ] <- quantiles[2]
+  x
+}
+df$Customer.Lifetime.Value <- OutlierManagement(df$Customer.Lifetime.Value)
+```
+
+# Label Encoding 
+# replacing the different levels of a categorical variable with dummy numbers and converting to factors.
+
+```{r}
+df$State = factor(df$State,
+                           levels = c('Washington','Arizona','Nevada','Oregon','California'),
+                           labels = c(1, 2, 3, 4, 5))
+
+df$Gender = factor(df$Gender,
+                            levels = c('M', 'F'),
+                            labels = c(1,2))
+
+df$Vehicle.Size = factor(df$Vehicle.Size,
+                                  levels = c('Large','Medsize','Small'),
+                                  labels = c(1,2,3))
+
+df$Policy = factor(df$Policy,
+                            levels = c('Corporate L1','Corporate L2','Corporate L3','Personal L1','Personal L2' ,'Personal L3', 'Special L1', 'Special L2', 'Special L3'),
+                            labels = c(1,2,3,4,5,6,7,8,9))
+
+df$Coverage = factor(df$Coverage,
+                              levels = c('Basic','Extended','Premium'),
+                              labels = c(1,2,3))
+
+df$EmploymentStatus = factor(df$EmploymentStatus, 
+                                      levels = c('Employed','Unemployed','Disabled','Medical Leave','Retired'),
+                                      labels = c(1,2,3,4,5))
+
+df$Response = factor(df$Response,
+                              levels = c('No','Yes'),
+                              labels = c(1,2))
+
+df$Engaged <- as.integer(df$Response) - 1
+
+df$Education = factor(df$Education,
+                               levels = c('High School or Below', 'Bachelor','College', 'Master', 'Doctor' ),
+                               labels = c(1,2,3,4,5))
+
+df$Location.Code = factor(df$Location.Code,
+                                   levels = c('Rural', 'Suburban', 'Urban'),
+                                   labels = c(1,2,3))
+
+df$Marital.Status = factor(df$Marital.Status,
+                                    levels = c('Single','Married','Divorced'),
+                                    labels = c(1,2,3))
+
+df$Policy.Type = factor(df$Policy.Type,
+                                 levels = c('Corporate Auto', 'Personal Auto', 'Special Auto'),
+                                 labels = c(1,2,3))
+
+df$Renew.Offer.Type = factor(df$Renew.Offer.Type,
+                                      levels = c('Offer1','Offer2','Offer3','Offer4'),
+                                      labels = c(1,2,3,4))
+
+df$Sales.Channel = factor(df$Sales.Channel,
+                                   levels = c('Agent', 'Call Center', 'Branch','Web'),
+                                   labels = c(1,2,3,4))
+
+df$Vehicle.Class = factor(df$Vehicle.Class,
+                                   levels = c('Two-Door Car','Four-Door Car','SUV','Luxury Car','Luxury SUV', 'Sports Car'),
+                                   labels = c(1,2,3,4,5,6))
+
+```
+#the kable() function returns a single table for a single data object, and returns a table that contains multiple tables if the input object is a list of data objects
+```{r}
+df %>% head() %>% kable()
+
+```
+
+#the skim function providing a broad overview of a data frame. It handles data of all types, dispatching a different set of summary functions based on the types of columns in the data frame.
+```{r}
+df %>% skim()
+```
+
+# dropping the unwanted values in the dataset(garbage values)
+```{r}
+df <- df %>%
+  dplyr::select(-Customer,-Effective.To.Date,-Sales.Channel) %>%
+  drop_na()
+```
+# The seed() function specifies the starting number for generating a sequence of random numbers.
+# splitting the dataset into train and test data 
+# bake() creates a design matrix by applying operations from a taught recipe to a data collection.
+# In this part,  simple! (recipe()) Get the ingredients: provide the response variable as well as the variables that will be used to predict it.
+```{r}
+set.seed(seed = 1972) 
+train_test_split <-
+  rsample::initial_split(
+    data = df,     
+    prop = 0.75   
+  ) 
+train_test_split
+
+train_tbl <- train_test_split %>% training() 
+test_tbl  <- train_test_split %>% testing() 
+
+recipe_simple <- function(dataset) {
+  recipe(Customer.Lifetime.Value ~ ., data = dataset) %>%
+    step_string2factor(all_nominal(), -all_outcomes()) %>%
+    prep(data = dataset)
+}
+
+recipe_prepped <- recipe_simple(dataset = train_tbl)
+
+train_baked <- bake(recipe_prepped, new_data = train_tbl)
+test_baked  <- bake(recipe_prepped, new_data = test_tbl)
+```
+
+# The next aim is to identify a result and interpret it using a linear model, which was accomplished. In the beginning, apply a linear or regression model and P-values were calculated using this linear equation. Most people were interested in learning more about the p-value or probability value. Otherwise, remove them from the model if they have a p-value below 0.05. The process was repeated until all variables in the model had a p-value of 0.05 or less.
+
+# In that model, we also checked the difference between R-square and Adjusted R-square to see if it was significant. As a statistical metric, R-squared tells you how near your data are to the fitted regression line, whether the adjusted R-squared has been adjusted for the number of variables in your model or not. This occurs when a predictor improves the model less than would be anticipated by chance. There was a linear model fitted with adjusted p-values of less than 0.05 for each variable, and the R-square was 0.73 .
+
+
+# In this model we are trying to select and drop some of the features from the dataset to see the accuracy of the model
+```{r}
+
+library(MASS)
+Reg_1 = lm(Customer.Lifetime.Value ~. ,data = train_baked)
+stepAIC(Reg_1)
+summary(Reg_1)
+
+Reg_2 = lm(Customer.Lifetime.Value ~ Monthly.Premium.Auto+I(Coverage == '3') +
+             I(Education == '1') + I(EmploymentStatus == '4') + 
+             I(Marital.Status == '1') + I(Number.of.Open.Complaints == 3) +
+             I(Number.of.Open.Complaints == 4) + I(Number.of.Policies == 2) +
+             I(Number.of.Policies == 3) + I(Number.of.Policies == 4) + I(Number.of.Policies == 5) +
+             I(Number.of.Policies == 6) + I(Number.of.Policies == 7) + I(Number.of.Policies == 8) +
+             I(Number.of.Policies == 9) + I(Renew.Offer.Type == '3') + 
+             I(Vehicle.Class == '3') + I(Vehicle.Class == '6') ,data = train_baked)
+summary(Reg_2)
+extractAIC(Reg_2) 
+
+Reg_3 = lm(Customer.Lifetime.Value ~ Monthly.Premium.Auto + I(Marital.Status == '1') +
+             I(Number.of.Open.Complaints == 4) + I(Number.of.Policies == 2) +
+             I(Number.of.Policies == 3) + I(Number.of.Policies == 4) + I(Number.of.Policies == 5) +
+             I(Number.of.Policies == 6) + I(Number.of.Policies == 7) + I(Number.of.Policies == 8) +
+             I(Number.of.Policies == 9) + I(Vehicle.Class == '6') ,data = train_baked)
+summary(Reg_3)
+extractAIC(Reg_3) 
+
+Reg_4 = lm(Customer.Lifetime.Value ~ Monthly.Premium.Auto + I(Marital.Status == '1') +
+             I(Number.of.Policies == 2) + I(Number.of.Policies == 3) + I(Number.of.Policies == 4) +
+             I(Number.of.Policies == 5) + I(Number.of.Policies == 6) + I(Number.of.Policies == 7) +
+             I(Number.of.Policies == 8) + I(Number.of.Policies == 9) + I(Vehicle.Class == '6')
+           ,data = train_baked)
+summary(Reg_4)
+extractAIC(Reg_4) 
+```
+# Predection
+# The MAPE or Mean Absolute Percentage Error, which is the difference between the actual data and the predictors, was calculated by using the Fitted function. If MAPE is less than 10%, the model will be considerably better.When the MAPE is = 0.19, the model's efficiency is 19%. As a result, the model is in good shape. Accuracy we found out was 80%
+```{r}
+
+test_baked$pred_LM = predict(Reg_4,test_baked)
+head(test_baked)
+
+## Accuracy Test for Linear Regression.
+
+test_baked$LM_APE = 100 * ( abs(test_baked$Customer.Lifetime.Value - test_baked$pred_LM) / test_baked$Customer.Lifetime.Value )
+head(test_baked)
+
+MeanAPE = mean(test_baked$LM_APE)
+MedianAPE = median(test_baked$LM_APE)
+
+print(paste('### Mean Accuracy of Linear Regression Model is: ', 100 - MeanAPE))
+print(paste('### Median Accuracy of Linear Regression Model is: ', 100 - MedianAPE))
+```
+# XG BOOST MODEL
+
+
+```{r}
+library(xgboost)
+
+
+# Constructing the Dense matrix on the train and test data
+xgtrain <- sparse.model.matrix(Customer.Lifetime.Value ~., data = train_tbl)
+head(xgtrain)
+xgtrain_label <- train_tbl[,"Customer.Lifetime.Value"]
+train_matrix <- xgb.DMatrix(data = as.matrix(xgtrain), label = xgtrain_label)
+
+xgtest <- sparse.model.matrix(Customer.Lifetime.Value ~., data = test_tbl)
+head(xgtest)
+xgtest_label <- test_tbl[,"Customer.Lifetime.Value"]
+test_matrix <- xgb.DMatrix(data = as.matrix(xgtest), label = xgtest_label)
+
+xgdf <- sparse.model.matrix(Customer.Lifetime.Value ~., data = df)
+head(xgdf)
+xgmini_label <- df[,"Customer.Lifetime.Value"]
+df_matrix <- xgb.DMatrix(data = as.matrix(xgdf), label = xgmini_label)
+
+watchlist <- list(train = train_matrix, test = test_matrix)
+
+# fit the model
+xgmodel <- xgb.train(data = train_matrix, watchlist = watchlist, 
+                          nround = 100, nthread = 4, eta = 0.1, max.depth = 6 ,objective = "reg:linear", eval_metric = "rmse" , verbose = 1) 
+
+
+pred_tb1 <- predict(xgmodel, newdata = test_matrix)
+test_baked$predicted<-pred_tb1
+write.csv(pred_tb1, "CLVPredictedValues.csv")
+write.csv(test_tbl, "xgTestDataSet.csv")
+
+rmse(test_tbl$Customer.Lifetime.Value, pred_tb1)
+postResample(test_tbl$Customer.Lifetime.Value, pred_tb1)
+
+pred_tb2 <- predict(xgmodel, newdata = df_matrix)
+write.csv(pred_tb1, "pred_tb1.csv")
+
+rmse( df$Customer.Lifetime.Value, pred_tb2)
+postResample(df$Customer.Lifetime.Value, pred_tb2)
+
+xgb.importance(feature_names = names(train_matrix), model = xgmodel)
+
+## Accuracy Test for XGBoostLinear Regression.
+
+plot(test_baked$Customer.Lifetime.Value,test_baked$predicted)
+test_baked$LM_APE =  100 * ((abs(test_baked$Customer.Lifetime.Value-test_baked$predicted)/test_baked$Customer.Lifetime.Value))
+MeanAPE = mean(test_baked$LM_APE)
+MedianAPE = median(test_baked$LM_APE)
+print(paste('### Mean Accuracy of XGBoostLinear Regression Model is: ', 100 - MeanAPE))
+print(paste('### Median Accuracy of XGBoostLinear Regression Model is: ', 100 - MedianAPE))
+
+
+
+test_baked$test_res <- test_baked$Customer.Lifetime.Value - test_baked$predicted 
+plot(test_baked$test_res)
+
+```
+

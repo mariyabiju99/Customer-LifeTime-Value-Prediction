@@ -1,0 +1,713 @@
+
+```{r include=FALSE}
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(maps)
+library(stringr)
+library(tidyverse)
+library(corrplot)
+library(moments)
+library(ggvis)
+library(reshape2)
+```
+
+```{r}
+getwd()
+```
+
+
+### DATA PREPROCESSING
+
+#### Aim: To predict the Customer Lifetime Value using the given explanatory variables. 
+
+```{r include=FALSE}
+data<- read.csv("Marketing-Customer-Value-Analysis.csv", header = TRUE)
+df = read.csv("Marketing-Customer-Value-Analysis.csv", header = TRUE)
+num_data <- unlist(lapply(data, is.numeric))  
+mdy <- mdy(data$Effective.To.Date)
+dmy <- dmy(data$Effective.To.Date)
+mdy[is.na(mdy)] <- dmy[is.na(mdy)]
+data$Effective.To.Date <- mdy
+colnames(df)
+colnames(df) <- str_replace_all(colnames(df),"[.]","")
+colnames(df)
+
+```
+
+
+#### Data columns and corresponding unique values :
+```{r echo=FALSE}
+sapply(df, data.table::uniqueN)
+```
+#### The summary of the given data :
+```{r echo=FALSE}
+summary(data)
+```
+
+#### Analysis of missing values in each column : 
+```{r echo=FALSE}
+sapply(data,function(data) sum(is.na(data)))
+```
+Here we can observe that there are no missing values in the data.
+
+
+### EXPLORATORY DATA ANALYSIS
+
+#### EXPLORING THE TARGET VARIABLE
+
+#### Statistical summary of Customer Lifetime Value
+```{r echo=TRUE}
+range(df$CLV)
+median(df$CLV)
+mean(df$CLV)
+sd(df$CLV)
+skewness(df$CLV)
+kurtosis(df$CLV)
+```
+
+#### Boxplot of Customer Lifetime Value
+```{r}
+boxplot(df$CLV)
+```
+
+Here we can observe that there is a significant amount of outliers for Customer Lifetime Value.
+
+
+#### Histogram of Customer Lifetime Value
+```{r}
+hist(df$CLV,
+     main = "Histogram of CLV",
+     xlab = "CLV($)",
+     col = "lightblue" ,border = "#FF5500")
+```
+
+Right skewed,implies as CLV increases customers the number of customers reduces.
+
+#### CORRELATION OF TARGET VARIABLE WITH OTHER INDEPENDENT CONTINOUS VARIABLES
+```{r}
+corcol <- df[,c(3,10,13,14,15,16,17,22)]
+colnames(corcol) <- c("CLV","Income","MPA","MonSincLastClaim",
+                      "MonSincPolicyIception","OpnComplaints","NoPolicy",
+                      "TCA")
+corrplot(cor(corcol),method = 'number',
+         order = "AOE")
+```
+
+Customer Lifetime Value (CLV) shows highest positive correlations with Monthly Premiums and Total
+Claim Amount.
+
+#### RELATIONSHIP BETWEEN CORRELATED CONTINOUS VARIABLES AND TARGET VARIABLE
+
+
+#### Statistical summary of Monthly Premium Auto
+```{r}
+range(df$ MonthlyPremiumAuto)
+median(df$ MonthlyPremiumAuto)
+mean(df$ MonthlyPremiumAuto)
+sd(df$ MonthlyPremiumAuto)
+skewness(df$MonthlyPremiumAuto)
+kurtosis(df$MonthlyPremiumAuto)
+```
+
+#### Boxplot of Monthly Premium Auto
+```{r}
+boxplot(df$ MonthlyPremiumAuto)
+```
+
+There are significant number of outliers for Monthly Premium Auto variable.
+
+
+#### Scatterplot of Monthly Premium Auto
+```{r}
+plot(x = df$MonthlyPremiumAuto,y = df$CLV,
+     xlab = "Monthly Premium Auto",
+     ylab = "CLV",
+     main = "Scatter Plot of MPA Vs CLV",
+     col = "maroon4")
+```
+
+From scatter plot, it is clearly visible that on increase of MPA, CLV also increases.
+
+
+#### Histogram of Monthly Premium Auto
+```{r}
+hist(df$MonthlyPremiumAuto,
+     main = "Histogram of Monthly Premium Auto",
+     xlab = "Monthly Premium Auto",
+     col = "lightgreen" ,border = "#FF5500")
+```
+
+It is positvely skewed since the density is high on the left-hand side .There are many outliers in the distribution. There is a Positive Correlation of 40 % of MPA with CLV. 
+
+
+#### Statistical summary of Total Claim Amount
+```{r}
+range(df$ TotalClaimAmount)
+median(df$ TotalClaimAmount)
+mean(df$ TotalClaimAmount)
+sd(df$ TotalClaimAmount)
+skewness(df$TotalClaimAmount)
+kurtosis(df$TotalClaimAmount)
+```
+
+#### Boxplot of Months Total Claim Amount
+```{r}
+boxplot(df$ TotalClaimAmount)
+```
+
+In case of Total Claim Amount there are significant number of outliers in the distribution and the outlier values are relatively high.
+
+
+#### Scatterplot of Total Claim Amount
+```{r}
+plot(x = df$TotalClaimAmount,y = df$CLV,
+     xlab = "Total Claim Amount",
+     ylab = "CLV",
+     main = "Scatter Plot of Total Claim Amount Vs CLV",
+     col = "maroon3")
+```
+
+ From scatter plot, it is clearly visible that on increase of TCA, CLV is also Increasing.
+ 
+ 
+#### Histogram of Total Claim Amount
+```{r}
+hist(df$TotalClaimAmount,
+     main = "Histogram of Total Claim Amount",
+     xlab = "Total Claim Amount",
+     col = "cornflowerblue" ,border = "#FF5500")
+```
+
+There is a Positive Correlation of 23 % of TCA with CLV. 
+
+#### OUTLIER ANALYSIS OF OTHER CONTINOUS INDEPENDENT VARIABLE
+```{r}
+databox=data.frame(df$MonthsSinceLastClaim,
+df$MonthsSincePolicyInception,
+df$NumberofOpenComplaints,
+df$NumberofPolicies,
+df$TotalClaimAmount,
+df$Income)
+boxplot(databox,col="pink")
+```
+
+The number of outliers is significantly low for relatively uncorrelated continuous variables.
+
+
+#### RELATIONSHIP BETWEEN CATEGORICAL VARIABLES AND TARGET VARIABLE
+
+#### Proportion of Gender for each state
+```{r}
+
+ggplot(data, 
+       aes(x = State, 
+           fill = Gender)) + 
+  geom_bar(position = "stack")
+```
+
+#### Boxplot of various Gender Categories
+```{r}
+ggplot(df, aes(x = Gender, y = CLV)) + 
+  geom_boxplot(col = "blue",outlier.colour = "blue",fill ="#99D8C9")
+```
+
+Most of the customers are from the region of California.Here we can observe that there is an equal porportion of Male and Female in all the cases and some of the male customers have highly contributed to the Customer Lifetime Value. 
+
+
+#### Mean Customer Lifetime Value for each Sate
+```{r}
+
+plotdata <- data %>%
+  group_by(State) %>%
+  summarize(CLV_mean = mean(CLV))
+
+# plot mean Customer Lifetime Value
+ggplot(plotdata, 
+       aes(x = State, 
+           y = CLV_mean)) +
+   geom_text(aes(label = CLV_mean), 
+            size = 3, 
+            position = position_stack(vjust = 0.5)) +
+  geom_bar(stat = "identity",fill = "cornflowerblue")
+```
+
+#### Boxplot of various State Categories
+```{r}
+
+ggplot(df, aes(x = State, y = CLV)) + 
+  geom_boxplot(col = "blue",outlier.colour = "blue",fill ="#99D8C9")
+
+```
+
+The average Customer Lifetime Value is somewhat same for all states but some customers from California,Washington and Oregon stands apart since they have high CLV.
+
+
+#### Mean Customer Lifetime Value for each Coverage
+```{r}
+
+plotdata <- data %>%
+  group_by(Coverage) %>%
+  summarize(CLV_mean = mean(CLV))
+
+# plot mean Customer Lifetime Value
+ggplot(plotdata, 
+       aes(x =Coverage,
+           y = CLV_mean)) +
+   geom_text(aes(label = CLV_mean), 
+            size = 3, 
+            position = position_stack(vjust = 0.5)) +
+  geom_bar(stat = "identity",fill = "lightgreen")
+
+
+
+```
+
+Here we can observe that the basic policy coverage chosen by the customers has the least average Customer Lifetime Value and preminum policy coverage has the highest and this is so obvious because
+the high profit providing will surely choose the best coverage and vice versa.
+
+
+#### Count of customers from each Education
+
+```{r}
+ggplot(data, 
+       aes(x = Education)) + 
+  geom_bar(position = "identity",fill = "maroon4",col="black",width=0.7)+
+    geom_text(stat="Count",aes(label = after_stat(count)),vjust=3)+
+    theme(
+        text=element_text(size=15),
+        axis.title.x = element_text(color="black", size=20),
+        axis.title.y = element_text(color="black", size=20)
+    )
+
+
+```
+
+The number of Doctors and Masters are comparitively very low AND NUMBER OF Bachelor,High School or Below and College customers are significantly high.
+
+
+#### Mean Customer Lifetime Value for each Education
+```{r}
+plotdata <- data %>%
+  group_by(Education) %>%
+  summarize(CLV_mean = mean(CLV))
+
+# plot mean Customer Lifetime Value
+ggplot(plotdata, 
+       aes(x =Education,
+           y = CLV_mean)) +
+   geom_text(aes(label = CLV_mean), 
+            size = 3, 
+            position = position_stack(vjust = 0.5)) +
+  geom_bar(stat = "identity",fill = "lightblue")
+
+```
+
+Eventhough the number of doctors is low Mean Customer Lifetime Value for that category doesn't show much variation when compared with others and the masters education category has a high  Mean Customer Lifetime Value eventhough their frequency is low.
+
+
+#### Boxplot of various Education Categories
+```{r}
+ggplot(df, aes(x = Education, y = CLV)) + 
+  geom_boxplot(col = "blue",outlier.colour = "blue",fill ="#99D8C9")
+```
+
+Some of the customers from High School or Below stands among the outliers and have extremely high CLV value.
+
+
+#### Count of customers from each Employment Status
+```{r}
+ggplot(data, 
+       aes(x = EmploymentStatus, 
+           fill = Education)) + 
+  geom_bar(position = "stack")
+ 
+
+```
+
+The count of employed customers is significantly high and it goes in tally with our expectation.Employed bachelors are more value to the company than others.
+
+
+#### Mean Customer Lifetime Value for each Employment Status
+```{r}
+plotdata <- data %>%
+  group_by(EmploymentStatus) %>%
+  summarize(CLV_mean = mean(CLV))
+
+# plot mean Customer Lifetime Value
+ggplot(plotdata, 
+       aes(x =EmploymentStatus,
+           y = CLV_mean)) +
+   geom_text(aes(label = CLV_mean), 
+            size = 3, 
+            position = position_stack(vjust = 0.5)) +
+  geom_bar(stat = "identity",fill = "lightgreen")
+
+```
+
+Since the number of employed customers is high for obvious reasons the Mean Customer Lifetime Value will be high for them.
+
+
+#### Count of customers from each Location Code
+
+```{r}
+ggplot(data, 
+       aes(x =Location.Code, 
+           fill = Marital.Status)) + 
+  geom_bar(position = "stack")
+ 
+
+```
+
+Most of the customers are from the suburban area then comes the rural followed by urban. Married surburban customers are valuable to the company.
+
+
+#### Mean Customer Lifetime Value for each Location Code
+```{r}
+plotdata <- data %>%
+  group_by(Location.Code) %>%
+  summarize(CLV_mean = mean(CLV))
+
+# plot mean Customer Lifetime Value
+ggplot(plotdata, 
+       aes(x =Location.Code,
+           y = CLV_mean)) +
+   geom_text(aes(label = CLV_mean), 
+            size = 3, 
+            position = position_stack(vjust = 0.5)) +
+  geom_bar(stat = "identity",fill = "cornflowerblue")
+
+
+```
+
+Here we can observe that the Mean Customer Lifetime Value for the urban customers is slight higher than that of other customers this maybe because urban customers tend to purchase from big corporates and they have better jobs. Urban customers are valuable to the company.
+
+
+#### Count of customers from each Marital Status
+```{r}
+ggplot(data, 
+       aes(x = Marital.Status)) + 
+  geom_bar(position = "identity",fill = "maroon3",col="black",width=0.8)+
+    geom_text(stat="Count",aes(label = after_stat(count)),vjust=3)+
+    theme(
+        text=element_text(size=15),
+        axis.title.x = element_text(color="black", size=20),
+        axis.title.y = element_text(color="black", size=20)
+    )
+
+```
+
+Significantly high number of customers are married followed by single customers and then divorced customers.This is because married customers will have spouse and children and requires a more spacious vehicle.
+
+
+#### Mean Customer Lifetime Value for each Marital Status
+```{r}
+plotdata <- data %>%
+  group_by(Marital.Status) %>%
+  summarize(CLV_mean = mean(CLV))
+
+# plot mean Customer Lifetime Value
+ggplot(plotdata, 
+       aes(x =Marital.Status,
+           y = CLV_mean)) +
+   geom_text(aes(label = CLV_mean), 
+            size = 3, 
+            position = position_stack(vjust = 0.5)) +
+  geom_bar(stat = "identity",fill = "lightgreen")
+
+```
+
+
+Here we can observe that the Mean Customer Lifetime Value for divorced customer is high followed by married customers and then single customers.
+
+#### Boxplot of various Marital Status Categories
+```{r}
+ggplot(df, aes(x = MaritalStatus, y = CLV)) + 
+  geom_boxplot(col = "blue",outlier.colour = "blue",fill ="#99D8C9")
+
+```
+
+
+Some of the married customers have very high CLV.
+
+
+#### Count of customers from each Policy Type
+```{r}
+par(mfrow=c(1,2))
+ggplot(data, 
+       aes(x = Policy.Type, 
+           fill = Vehicle.Size)) + 
+  geom_bar(position = "stack")
+
+
+
+```
+
+The number of customers belonging to personal auto policy type is significantly high when compared with others and special auto policy type is significantly low and there is relatively higher number of medium sized vehicles in all cases.
+
+
+#### Mean Customer Lifetime Value for each Policy Type
+```{r}
+plotdata <- data %>%
+  group_by(Policy.Type) %>%
+  summarize(CLV_mean = mean(CLV))
+
+# plot mean Customer Lifetime Value
+ggplot(plotdata, 
+       aes(x =Policy.Type,
+           y = CLV_mean)) +
+   geom_text(aes(label = CLV_mean), 
+            size = 3, 
+            position = position_stack(vjust = 0.5)) +
+  geom_bar(stat = "identity",fill = "lightblue")
+
+
+```
+
+
+Here we can observe that the special auto policy type has a high Mean Customer Lifetime Value eventhough the count is that case is very low, from this we can conclude that the special auto policy is vehicles with high cost or are heavy goods vehicles.
+
+#### Count of customers from each Policy
+```{r}
+ggplot(data, 
+       aes(x = Policy, 
+           fill = Vehicle.Class)) + 
+  geom_bar(position = "stack")
+```
+
+Here we case observe that the personal L3 customers are high in numbers when compare with others.
+Personal Policy and Four-Door Car based customers are valuable to the company.
+
+#### Mean Customer Lifetime Value for each Policy
+```{r}
+
+plotdata <- data %>%
+  group_by(Policy) %>%
+  summarize(CLV_mean = mean(CLV))
+
+# plot mean Customer Lifetime Value
+ggplot(plotdata, 
+       aes(x =Policy,
+           y = CLV_mean)) +
+   geom_text(aes(label = CLV_mean), 
+            size = 1, 
+            position = position_stack(vjust = 0.9)) +
+  geom_bar(stat = "identity",fill = "lightgreen")
+
+
+
+
+```
+
+We have already observed that the special policy type customers have a high Mean Customer Lifetime Value eventhough the count in that case is very low and we came to a conclusion that the the vehicle owned by them will be of a high cost and as a evidence to support our claim here we have observed that, the Level 3 special policy type customers are having a high Mean Customer Lifetime Value followed by Level 1 Corporate policy type customers.
+
+#### Boxplot for various Policy categories
+```{r}
+ggplot(df, aes(x = Policy, y = CLV)) + 
+  geom_boxplot(col = "blue",outlier.colour = "blue",fill ="#99D8C9")
+```
+
+Some of the level 1,3 personal policy type and level 3 corporate policy type have considerably high CLV.
+
+
+#### Count of customers from each Renew Offer Type
+```{r}
+
+ggplot(data, 
+       aes(x = Renew.Offer.Type, 
+           fill = Response)) + 
+  geom_bar(position = "stack")
+
+```
+
+Most of the customers picked up offer 1 class renewal type because it provides maximum benefits to the customers followed by offer 2 , offer 3 and so on, from this we can conclude that customer chooses renewal based on the benefits provided by the company and customers belonging to offer 4 class renewal type had a negative response to the policy plan.
+
+
+#### Mean Customer Lifetime Value for each Renew Offer Type
+```{r}
+
+plotdata <- data %>%
+  group_by(Renew.Offer.Type) %>%
+  summarize(CLV_mean = mean(CLV))
+
+# plot mean Customer Lifetime Value
+ggplot(plotdata, 
+       aes(x =Renew.Offer.Type,
+           y = CLV_mean)) +
+   geom_text(aes(label = CLV_mean), 
+            size = 3, 
+            position = position_stack(vjust = 0.5)) +
+  geom_bar(stat = "identity",fill = "lightblue")
+
+```
+
+Here we can observe that offer 1 class renewal type has the highest Mean Customer Lifetime Value, this is because they enjoy maximum benefits from the company and is obliged to increase the profit of the company.On a different perspective we can say that, the customer who is favouring the company the most will be given maximum benefits, the company best possibly retains customers providing maximum profit and does not give much consideration to less profit providing customers and that is the reason why the count in those class renewal category is low.
+
+
+#### Count of customers from each Sales Channel
+```{r}
+ggplot(data, 
+       aes(x = Sales.Channel, 
+           fill = Gender)) + 
+  geom_bar(position = "stack")
+
+
+```
+
+Most of the customers used Agent Sales Channel irrespective of the gender and it is followed by branch, call center and then web.
+
+
+#### Mean Customer Lifetime Value for each Sales Channel
+```{r}
+plotdata <- data %>%
+  group_by(Sales.Channel) %>%
+  summarize(CLV_mean = mean(CLV))
+
+# plot mean Customer Lifetime Value
+ggplot(plotdata, 
+       aes(x =Sales.Channel,
+           y = CLV_mean)) +
+   geom_text(aes(label = CLV_mean), 
+            size = 3, 
+            position = position_stack(vjust = 0.5)) +
+  geom_bar(stat = "identity",fill = "cornflowerblue")
+
+```
+
+The highest Mean Customer Lifetime Value is for Branch sales Channel this is because customers directly approaching the branch are done direct canvasing and they get the information about the benefits without any information leakage.
+
+#### Boxplot of various Sales Channel Categories
+```{r}
+ggplot(df, aes(x = SalesChannel, y = CLV)) + 
+  geom_boxplot(col = "blue",outlier.colour = "blue",fill ="#99D8C9")
+
+```
+
+One of the CLV for Call Center is significantly high and branch has succeeded in obtaining some number of customers with high CLV.
+
+
+#### Count of customers from each Vehicle Class
+```{r}
+
+ggplot(data, 
+       aes(x = Vehicle.Class, 
+           fill = Vehicle.Size)) + 
+  geom_bar(position = "stack")
+
+
+```
+
+The normal Four-Door Vehicle has the maximum count when compared with other vehicle classes and luxury car have comparitively a very low count. Medium sized Four- Door Car owning Customers are valuable to the company.
+
+
+#### Mean Customer Lifetime Value for each Vehicle Class
+```{r}
+plotdata <- data %>%
+  group_by(Vehicle.Class) %>%
+  summarize(CLV_mean = mean(CLV))
+
+# plot mean Customer Lifetime Value
+ggplot(plotdata, 
+       aes(x =Vehicle.Class,
+           y = CLV_mean)) +
+   geom_text(aes(label = CLV_mean), 
+            size = 1, 
+            position = position_stack(vjust = 0.2)) +
+  geom_bar(stat = "identity",fill = "lightgreen")
+
+```
+
+
+Since luxury cars are very costly they have a very high Mean Customer Lifetime Value.
+
+#### Boxplot of various Vehicle Class Categories
+```{r}
+ggplot(df, aes(x = VehicleClass, y = CLV)) + 
+  geom_boxplot(col = "blue",outlier.colour = "blue",fill ="#99D8C9")
+```
+
+For obvious reasons we observe that some of the luxury cars and sports cars have high CLV.
+
+
+#### Count of customers from each Vehicle Size
+```{r}
+ggplot(data, 
+       aes(x = Vehicle.Size)) + 
+  geom_bar(position = "identity",fill = "maroon3",col="black",width=0.8)+
+    geom_text(stat="Count",aes(label = after_stat(count)),vjust=3)+
+    theme(
+        text=element_text(size=15),
+        axis.title.x = element_text(color="black", size=20),
+        axis.title.y = element_text(color="black", size=20)
+    )
+
+```
+
+People mostly prefer medium sized vehicles so the count for that category is significantly high.
+
+
+#### Mean Customer Lifetime Value for each Vehicle Size
+```{r}
+plotdata <- data %>%
+  group_by(Vehicle.Size) %>%
+  summarize(CLV_median = median(CLV))
+
+# plot mean Customer Lifetime Value
+ggplot(plotdata, 
+       aes(x =Vehicle.Size,
+           y = CLV_median)) +
+   geom_text(aes(label = CLV_median), 
+            size = 3, 
+            position = position_stack(vjust = 0.5)) +
+  geom_bar(stat = "identity",fill = "cornflowerblue")
+
+```
+
+The median Customer Lifetime Value is higher for medium sized vehicles.
+
+
+#### Count of customers from each Response
+```{r}
+
+ggplot(data, 
+       aes(x = Response)) + 
+  geom_bar(position = "identity",fill = "maroon4",col="black",width=0.8)+
+    geom_text(stat="Count",aes(label = after_stat(count)),vjust=3)+
+    theme(
+        text=element_text(size=15),
+        axis.title.x = element_text(color="black", size=20),
+        axis.title.y = element_text(color="black", size=20)
+    )
+
+
+```
+
+The negative response customers is quiet high than positive response customers
+
+#### Mean Customer Lifetime Value for each Response
+```{r}
+plotdata <- data %>%
+  group_by(Response) %>%
+  summarize(CLV_mean = mean(CLV))
+
+# plot mean Customer Lifetime Value
+ggplot(plotdata, 
+       aes(x =Response,
+           y = CLV_mean)) +
+   geom_text(aes(label = CLV_mean), 
+            size = 3, 
+            position = position_stack(vjust = 0.5)) +
+  geom_bar(stat = "identity",fill = "lightgreen")
+
+```
+
+Eventhough there is a significant difference between the count of each response type the mean Customer Lifetime Value does not have much variation from eachother.
+
+#### Boxplot of various Response Categories
+```{r}
+ggplot(df, aes(x = Response, y = CLV)) + 
+  geom_boxplot(col = "blue",outlier.colour = "blue",fill ="#99D8C9")
+
+```
+
+Customers who showed negative response to the policy plan has a significantly amount of outliers in terms of the CLV value and most of them are quiet high high CLV values.

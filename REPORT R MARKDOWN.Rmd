@@ -1,0 +1,582 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+![](pic4.png)
+
+# REPORT : CUSTOMER LIFETIME VALUE PREDICTION 
+
+![](pic1.png)
+
+
+
+### PROBLEM STATEMENT / AIM 
+The objective of this project is the prediction of Customer Life-time Value (CLV). CLV is
+the lifetime value of a customer, or in other words it represents the total amount of
+money a customer is expected to spend in business, or on products, during their
+lifetime. CLV is an important metric because it provides the business groups with a
+customer-centric perspective to guide some critical marketing and sales strategies,
+thereby enhancing important business decisions.
+
+### WORKFLOW:
+
+![](pic18.png)
+
+Initially in this project we have analysed the data through various exploratory data
+analysis techniques to explain the relationship between Customer Lifetime Value that is
+the target variable with the other explanatory variables. Further after rigorous analysis
+the most appropriate model is chosen and fitted to the data, which provides the highest
+accuracy.
+
+### UNDERSTANDING THE DATA 
+
+![](pic12.png)
+
+1. Data columns and values:
+There are a total of 24 data columns including the target variable that is the CLV.
+The columns are Customer, State , CLV , Response, Coverage, Education,
+EffectiveToDate, EmploymentStatus, Gender, Income, LocationCode ,MaritalStatus,
+MonthlyPremiumAuto , MonthsSinceLastClaim, MonthsSincePolicyInception,
+NumberofOpenComplaints, NumberofPolicies, PolicyType, Policy , RenewOfferType,
+SalesChannel , TotalClaimAmount , VehicleClass and VehicleSize.
+There are a total of 9134 Observations in the dataset.
+
+2. The dataset consists of a blend of both categorical and numeric
+columns:
+The categorical columns are : Customer, State , Response, Coverage, Education,
+EffectiveToDate, EmploymentStatus, Gender, LocationCode, MaritalStatus, PolicyType,
+Policy , RenewOfferType, SalesChannel , VehicleClass and VehicleSize.
+The numeric columns are: CLV, Income, MonthlyPremiumAuto,
+MonthsSinceLastClaim, MonthsSincePolicyInception, NumberofOpenComplaints,
+NumberofPolicies and TotalClaimAmount.
+
+3. There are no missing values in the dataset hence there is no
+treatment of missing values.
+
+![](SUMMARY1.png)
+
+![](SUMMARY2.png)
+
+![](SUMMARY3.png)
+
+### IMPORTANT INTUITIONS FROM EXPLORARTORY DATA ANALYSIS 
+
+![](pic5.png)
+```{r include=FALSE}
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(maps)
+library(stringr)
+library(tidyverse)
+library(corrplot)
+library(moments)
+library(ggvis)
+library(reshape2)
+```
+
+
+```{r include=FALSE}
+data<- read.csv("Marketing-Customer-Value-Analysis.csv", header = TRUE)
+df = read.csv("Marketing-Customer-Value-Analysis.csv", header = TRUE)
+num_data <- unlist(lapply(data, is.numeric))  
+mdy <- mdy(data$Effective.To.Date)
+dmy <- dmy(data$Effective.To.Date)
+mdy[is.na(mdy)] <- dmy[is.na(mdy)]
+data$Effective.To.Date <- mdy
+colnames(df)
+colnames(df) <- str_replace_all(colnames(df),"[.]","")
+colnames(df)
+
+```
+
+The target variable is Customer Lifetime Value and the first exploration was done of that variable and there we observed that: 
+
+
+```{r echo=FALSE}
+boxplot(df$CLV,main = "Boxplot of Customer Lifetime Value",col="lightblue")
+```
+
+There is a significant amount of outliers for Customer Lifetime Value.
+
+
+```{r echo=FALSE}
+df %>%
+  ggplot( aes(x=CLV)) +
+  ggtitle("Density Plot of Customer Lifetime Value")+
+    geom_density(fill="mediumpurple", color="#e9ecef", alpha=0.8)
+```
+
+Customer Lifetime Value is right skewed, i.e, as Customer Lifetime Value increases number of customers reduces.
+
+
+Next we analysed the correlation of target variable with other continuous independent variables.
+
+```{r echo=FALSE}
+corcol <- df[,c(3,10,13,14,15,16,17,22)]
+colnames(corcol) <- c("CLV","Income","MPA","MonSincLastClaim",
+                      "MonSincPolicyIception","OpnComplaints","NoPolicy",
+                      "TCA")
+corrplot(cor(corcol),method = 'number',
+         order = "AOE",tl.col="black")
+```
+
+Customer Lifetime Value (CLV) shows highest positive correlations with Monthly Premiums and Total
+Claim Amount.
+
+On the basis of this observation we explored the correlated variables and verified it's relationship with target variable.
+
+```{r echo=FALSE}
+boxplot(df$ MonthlyPremiumAuto,main = "Boxplot of Monthly Premium Auto",col="lightblue")
+```
+
+There are significant number of outliers for Monthly Premium Auto variable.
+
+
+```{r echo=FALSE}
+plot(x = df$MonthlyPremiumAuto,y = df$CLV,
+     xlab = "Monthly Premium Auto",
+     ylab = "CLV",
+     main = "Scatter Plot of MPA Vs CLV",
+     col = "cornflowerblue")
+```
+
+From scatter plot, it is clearly visible that on increase of MPA, CLV also increases. There is a Positive Correlation of 40 % of MPA with CLV.
+
+
+```{r echo=FALSE}
+df %>%
+  ggplot( aes(x=MonthlyPremiumAuto)) +
+  ggtitle("Density Plot of Monthly Premium Auto")+
+    geom_density(fill="mediumpurple", color="#e9ecef", alpha=0.8)
+```
+
+It is positvely skewed since the density is high on the left-hand side,i.e, as Monthly Premium amount increases number of customers reduces.
+
+
+```{r echo=FALSE}
+boxplot(df$ TotalClaimAmount,main = "Boxplot of Total Claim Amount",col="lightblue")
+```
+
+In case of Total Claim Amount there are significant number of outliers in the distribution and the outlier values are relatively high.
+
+
+
+```{r echo=FALSE}
+plot(x = df$TotalClaimAmount,y = df$CLV,
+     xlab = "Total Claim Amount",
+     ylab = "CLV",
+     main = "Scatter Plot of Total Claim Amount Vs CLV",
+     col = "cornflowerblue")
+```
+
+
+From scatter plot, it is clearly visible that on increase of TCA, CLV is also increasing.There is a Positive Correlation of 23 % of TCA with CLV.
+ 
+ 
+```{r echo=FALSE}
+df %>%
+  ggplot( aes(x=TotalClaimAmount)) +
+  ggtitle("Density Plot of Total Claim Amount")+
+    geom_density(fill="mediumpurple", color="#e9ecef", alpha=0.8)
+```
+
+It is positvely skewed since the density is high on the left-hand side,i.e, as Total Claim Amount increases number of customers reduces.
+
+
+Then our focus diverted into the various categorical variables.
+
+```{r echo=FALSE}
+
+ggplot(data, 
+       aes(x = State, 
+           fill = Gender))+
+  geom_bar(position = "stack")+
+  ggtitle("Proportion of Gender for each State")
+```
+
+```{r echo=FALSE}
+ggplot(df, aes(x = Gender, y = CLV)) + 
+  geom_boxplot(col = "blue",outlier.colour = "blue",fill ="#99D8C9")+
+  ggtitle("Boxplot of various Gender Categories")
+```
+
+Most of the customers are from the region of California.Here we can observe that there is an equal porportion of Male and Female in all the cases and some of the male customers have highly contributed to the Customer Lifetime Value. 
+
+
+```{r echo=FALSE}
+
+plotdata <- data %>%
+  group_by(Coverage) %>%
+  summarize(CLV_mean = mean(CLV))
+
+# plot mean Customer Lifetime Value
+ggplot(plotdata, 
+       aes(x =Coverage,
+           y = CLV_mean)) +
+   geom_text(aes(label = CLV_mean), 
+            size = 3, 
+            position = position_stack(vjust = 0.5)) +
+  geom_bar(stat = "identity",fill = "cornflowerblue")+
+  ggtitle("Mean Customer Lifetime Value for each Coverage")
+
+```
+
+Here we can observe that the basic policy coverage chosen by the customers has the least average Customer Lifetime Value and preminum policy coverage has the highest and this is so obvious because
+the high profit providing customers will surely choose the best coverage and vice versa.
+
+```{r echo=FALSE}
+ggplot(data, 
+       aes(x = EmploymentStatus, 
+           fill = Education)) +
+  ggtitle("Count of Customers from each Employment Status")+
+  geom_bar(position = "stack")
+ 
+
+```
+
+The count of employed customers is significantly high and it goes in tally with our expectation.Employed bachelors are more value to the company than others.Since the number of employed customers is high for obvious reasons, the mean Customer Lifetime Value will be high for them.
+
+```{r echo=FALSE}
+ggplot(df, aes(x = Education, y = CLV)) + 
+  ggtitle("Boxplot of various Education Categories")+
+  geom_boxplot(col = "blue",outlier.colour = "blue",fill ="#99D8C9")
+```
+
+From the previous graph we can understand that, the number of Doctors and Masters are comparatively very low and number of Bachelor,High School or Below and College customers are significantly high.Eventhough the number of doctors,masters is low Mean Customer Lifetime Value for those categories doesn't show much variation when compared with others.Some of the customers from High School or Below stands among the outliers and have extremely high CLV value.
+
+
+
+```{r echo=FALSE}
+ggplot(data, 
+       aes(x =Location.Code, 
+           fill = Marital.Status)) +
+  ggtitle("Count of Customers from each Location Code")+
+  geom_bar(position = "stack")
+ 
+
+```
+
+Most of the customers are from the suburban area then comes the rural followed by urban. Married surburban customers are valuable to the company.Significantly high number of customers are married followed by single customers and then divorced customers.This is because most married customers will have spouse and children and requires a more spacious vehicle for transportation so they take insurance.
+
+```{r echo=FALSE}
+plotdata <- data %>%
+  group_by(Location.Code) %>%
+  summarize(CLV_mean = mean(CLV))
+
+# plot mean Customer Lifetime Value
+ggplot(plotdata, 
+       aes(x =Location.Code,
+           y = CLV_mean)) +
+   geom_text(aes(label = CLV_mean), 
+            size = 3, 
+            position = position_stack(vjust = 0.5)) +
+  ggtitle("Mean Customer Lifetime Value for each Location Code")+
+  geom_bar(stat = "identity",fill = "cornflowerblue")
+
+```
+
+Here we can observe that the Mean Customer Lifetime Value for the urban customers is slight higher than that of other customers this maybe because urban customers tend to purchase from big corporates and they have better jobs. Urban customers are valuable to the company.
+
+
+
+```{r echo=FALSE}
+ggplot(data, 
+       aes(x = Policy.Type, 
+           fill = Vehicle.Size)) +
+  ggtitle("Count of Customers from each Policy Type")+
+  geom_bar(position = "stack")
+
+```
+
+
+The number of customers belonging to personal auto policy type is significantly high when compared with others and number of customers belonging to special auto policy type is significantly low.Medium sized vehicle customers seeking Personal Auto Policy is valuable to the company and from this graph we clearly observe that people mostly prefer medium sized vehicles so the count for that category is significantly high, and for this reason Mean Customer Lifetime Value will be higher for medium sized vehicles.Medium sized vehicle customers seeking Personal Auto Policy is high because married customers are more in number.
+
+```{r echo=FALSE}
+ggplot(data, 
+       aes(x = Policy, 
+           fill = Vehicle.Class)) +
+  ggtitle("Count of Customers from each Policy")+
+  geom_bar(position = "stack")
+```
+
+Here we case observe that the personal L3 customers are high in numbers when compare with others.
+Personal Policy and Four-Door Car based customers are valuable to the company.
+
+
+```{r echo=FALSE}
+
+ggplot(data, 
+       aes(x = Renew.Offer.Type, 
+           fill = Response)) +
+  ggtitle("Count of Customers from each Renew Offer Type")+
+  geom_bar(position = "stack")
+
+```
+
+Most of the customers picked up offer 1 class renewal type because it provides maximum benefits to the customers followed by offer 2 , offer 3 and so on, from this we can conclude that customer chooses renewal based on the benefits provided by the company and customers belonging to offer 4 class renewal type had a negative response to the policy plan.
+
+
+```{r echo=FALSE}
+
+ggplot(data, aes(x = Renew.Offer.Type, y = CLV)) + 
+  ggtitle("Boxplot of various Education Categories")+
+  geom_boxplot(col = "blue",outlier.colour = "blue",fill ="#99D8C9")
+
+```
+
+Here we can observe that offer 1 class renewal type has the highest Mean Customer Lifetime Value, this is because they enjoy maximum benefits from the company and is obliged to increase the profit of the company.On a different perspective we can say that, the customer who is favouring the company the most will be given maximum benefits, the company best possibly retains customers providing maximum profit and does not give much consideration to less profit providing customers and that is the reason why the count in those class renewal category is low. Some of offer 1 customers have very high CLV value.
+
+
+```{r echo=FALSE}
+ggplot(data, 
+       aes(x = Sales.Channel, 
+           fill = Gender)) +
+  ggtitle("Count of Customers from each Sales Channel")+
+  geom_bar(position = "stack")
+
+
+```
+
+Most of the customers used Agent Sales Channel irrespective of the gender and it is followed by branch, call center and then web.
+
+
+```{r echo=FALSE}
+
+ggplot(data, 
+       aes(x = Vehicle.Class, 
+           fill = Vehicle.Size)) +
+  ggtitle("Count of Customers from each Vehicle Class")+
+  geom_bar(position = "stack")
+
+
+```
+
+The normal Four-Door Vehicle has the maximum count when compared with other vehicle classes and luxury car have comparitively a very low count. Medium sized Four- Door Car owning Customers are valuable to the company.Altogether we can say that Medium sized, Four- Door Car and Personal policy type customers are very important to the company. 
+
+
+```{r echo=FALSE}
+ggplot(df, aes(x = VehicleClass, y = CLV)) +
+  ggtitle("Boxplot of various Vehicle Class Categories")+
+  geom_boxplot(col = "blue",outlier.colour = "blue",fill ="#99D8C9")
+```
+
+For obvious reasons we observe that some of the luxury cars and sports cars have high CLV and those customers are an asset for the company.
+
+
+```{r echo=FALSE}
+
+ggplot(data, 
+       aes(x = Response)) + 
+  geom_bar(position = "identity",fill = "cornflowerblue",col="black",width=0.8)+
+    geom_text(stat="Count",aes(label = after_stat(count)),vjust=3)+
+  ggtitle("Count of customers from each Response")+
+    theme(
+        text=element_text(size=10),
+        axis.title.x = element_text(color="black", size=12),
+        axis.title.y = element_text(color="black", size=12)
+    )
+
+
+```
+
+The negative response customers is quiet high than positive response customers and this means the company should focus on the improvisation of the policy plans.
+
+### FEATURE ENGINEERING
+
+![](pic7.png)
+
+➔ After the Exploratory data analysis, label encoding of various features has been
+done to replace the different levels of a categorical variable with dummy numbers
+and converting to factors. To make the data understandable or in a readable
+form, the training data is often labeled in words. Label encoding is performed on
+the following features
+
+1. State: The State variable has been given 4 levels 'Washington' ,'Arizona' ,'Nevada'
+'Oregon' ,'California' and these levels are encoded to 1, 2, 3, 4, 5 respectively.
+
+2. Gender: The Gender variable has been given 2 levels ‘M’ and ‘F’ that is Male and
+Female and these levels are encoded to 1, 2 respectively.
+
+3. VehicleSize: The VehicleSize variable has been given 3 levels
+'Large','Medsize','Small'
+and these levels are encoded to 1, 2, 3 respectively.
+
+4. Policy: The Policy variable has been given 9 levels 'Corporate L1', 'Corporate L2',
+'Corporate L3', 'Personal L1', 'Personal L2' , ‘Personal L3', 'Special L1', 'Special L2',
+'Special L3' and these levels are encoded to 1, 2, 3, 4, 5, 6, 7, 8, 9 respectively.
+
+5. Coverage: The Coverage variable has been given 3 levels
+‘Basic','Extended','Premium' and these levels are encoded to 1, 2, 3 respectively.
+
+6. EmploymentStatus: The EmploymentStatus variable has been given 5 levels
+'Employed', 'Unemployed', 'Disabled', 'Medical Leave', 'Retired' and these levels are
+encoded to 1, 2, 3, 4, 5 respectively.
+
+7. Response: The Response variable has been given 2 levels 'No','Yes' and these levels
+are encoded to 1, 2 respectively.
+
+8. Education: The Education variable has been given 5 levels 'High School or Below',
+'Bachelor', 'College', 'Master', 'Doctor' and these levels are encoded to 1, 2, 3, 4, 5
+respectively.
+
+9. LocationCode: The LocationCode variable has been given 3 levels 'Rural',
+'Suburban', 'Urban' and these levels are encoded to 1, 2, 3 respectively.
+
+10. MaritalStatus: The MaritalStatus variable has been given 3 levels
+'Single','Married','Divorced' and these levels are encoded to 1, 2, 3 respectively.
+
+11. PolicyType: The PolicyType variable has been given 4 levels ''Corporate Auto',
+'Personal Auto', 'Special Auto' and these levels are encoded to 1, 2, 3, 4 respectively.
+
+12. RenewOfferType: The RenewOfferType variable has been given 4 levels
+'Offer1','Offer2','Offer3','Offer4'' and these levels are encoded to 1, 2, 3, 4 respectively.
+
+13. SalesChannel: The SalesChannel variable has been given 4 levels Agent', 'Call
+Center', 'Branch','Web' and these levels are encoded to 1, 2, 3, 4 respectively.
+
+14. VehicleClass: The VehicleClass variable has been given 6 levels ‘Two-Door
+Car','Four-Door Car','SUV','Luxury Car','Luxury SUV', 'Sports Car' and these levels are
+encoded to 1, 2, 3, 4, 5, 6 respectively.
+
+➔ Further in this project, we have dropped the unwanted or the garbage
+values in the dataset to enhance its accuracy.
+The variables such as Customer, EffectiveToDate, SalesChannel were dropped.
+
+### MODEL SELECTION
+
+![](pic8.png)
+
+After performing all the feature engineering techniques and cleaning the data, the
+dataset was split into training and testing data and for this bake() and recipe() function
+were used. These functions provided the target variable that is the CLV as well as the
+other explanatory variables that are used to predict the CLV.
+
+#### DIFFERENT MODELS USED:
+After splitting the dataset, the next step is the application of different models to predict
+the target variable CLV.
+
+#### THE TRIAL AND ERROR METHOD - REGRESSION MODEL:
+Initially we used a Linear Model to identify and interpret the value of CLV. The
+p-values were calculated using the linear regression equation. The variables which had a
+p-value more than 0.05 were removed from the model and those variables were kept in
+the model whose p-values were less than or equal to 0.05 (that is the significant
+variables). Further in this project we also calculated R-squared and Adjusted
+R-squared and the difference between them to check if the result was significant or
+not. As a statistical metric, R-squared tells you how near your data are to the fitted
+regression line, whether the adjusted R-squared has been adjusted for the number of
+variables in your model or not. This occurs when a predictor improves the model less
+than would be anticipated by chance. There was a linear model fitted with adjusted
+p-values of less than 0.05 for each variable, and the R-square was 0.73.
+In this model we are trying to select and drop some of the features from the dataset to
+see the accuracy of the model.
+
+#### PREDICTION: 
+The MAPE or Mean Absolute Percentage Error, which is the difference
+between the actual data and the predictors, was calculated by using the Fitted function.
+The MAPE was found out to be equal to 0.19, indicating the model’s efficiency as 19% .
+The accuracy achieved from the model was 80%.
+
+### FINAL MODEL - LINEAR REGRESSION WITH XGBOOST MODEL
+In order to get a better accuracy (better than 80% as achieved by the previous model) we
+applied the Linear Regression Model with XGBoost.
+
+➔ To fit XGBOOST to the data, features (X) and label (Y) sets were prepared to
+perform the train and test split.
+
+➔ The train and test data are used to create a dense matrix.
+
+➔ Further, all real-valued variables in the dataset were standardised as the
+non-standardized variables might have an influence on the model.
+
+➔ Owing to the large dimension of the dataset, it is not possible to execute the
+dense matrix directly, so for that we constructed a sparse model or a “design”
+matrix.
+
+➔ Further, the data frame is internal to the principal user level function, which
+generates the transposed model matrix for one factor.
+
+➔ The following metrics were applied to the model to get a better accuracy:
+
+1.max.depth = 6: the trees won’t be deep, because our case is very simple ;
+2.nthead = 4: the number of cpu threads we are going to use;
+3.nround : max number of boosting iterations.
+4.eval.metric: allows us to monitor two new metrics for each round, logloss and
+error.
+5.eta : It controls the learning rate.
+6.verbose = 1: print evaluation metric.
+
+➔ Moreover, in order to get a Simple and a sophisticated model, we trained our
+model using the xgboost (simple) and xgb.train() methods, respectively. Hence
+by learning on one dataset and testing the model on another, it is possible to
+monitor a few metrics after each cycle of learning.
+
+➔ The watchlist parameter has been used in the model, which provides a list of XGB
+and as far as the DMatrix is concerned ,each of them is tagged with a name.
+
+### PREDICTION ON THE TEST DATA
+In order to predict the target variable various functions have been used such as -
+ 
+* Gain shows the improvement in accuracy brought by a feature to the branches it is on.
+
+* Cover measures the relative quantity of observations concerned by a feature.
+
+* Frequency displays the number of times a feature is used in all generated trees.
+
+ Displays the model’s approach is an acronym for extreme gradient boosting (XGBoost). We have used an optimization approach for regression problems which combines weak prediction models into a single strong prediction model thereby improving the insurance risk classifier’s performance by combining multiple models.
+ 
+![](pic22.png)
+
+### CONCLUSION AND BUSINESS IMPROVEMENT 
+
+![](pic11.png)
+
+* According to MAPE (Mean and Median Error Percentage), our regression model properly predicts the result 87.96 percent (Mean) and 95.63 percent (Median), with error percentages ranging from 3 percent to 12 percent. As of this writing, the R-square value is 0.7689372. Considering that these values range from 0.5 to 0.95, this is a decent predictive model to have in place.
+
+* We can see that positive responses, premium coverage, education (high school or less), employment and retirement status, male gender, income, married or single status, monthly auto premiums,
+and the number of open complaints and policies all play a role in determining the CLV and its final value. 
+
+* It is ironic that as an auto insurance company, vehicle type and size are not important.
+
+* This means that male drivers are more likely to be involved in an accident than their female counterparts.
+
+* Employees and retirees are more likely to need insurance and contribute more to the company as a result.
+
+### SUGGESTIONS
+
+* According to the model we created, the agents should primarily target clients who are working or retired, married or single, and whose education is either extremely basic or master level.
+
+* It is necessary to decrease the quantity of complaints.
+
+* Premium consumers should be given more attention than basic customers and should receive special discounts and offers.
+
+* The intended audience should be men.
+
+* Because the number of policies impacts the CLV, agents should begin boosting their policy marketing to consumers.
+
+* Customers who insure Sports Cars should receive special deals.
+
+* It is best to steer clear of customers who have Type 1 insurance policies.
+
+* Open joint accounts for customers with three or four.
+
+* Improvisation of policy plans is a must to get positive responses from the customers.
+
+### ADDITIONAL DATA
+
+Considering this CLV model had to cover almost every line of business, a 12-month duration was short to plan, execute and analyze everything.Additional cost sources should also be considered, not only to enhance the customer's current value (CCV), but also to enhance its future value. A more realistic view of costs might be achieved this way.
+
+Last but not least, down-sell is a component that would be fascinating to study and maybe add to the present data However, it is well recognised that in certain company sectors such as insurance it is often preferable to degrade products or services in order to prevent profitable clients from leaving. In this approach, a customer's prospective contacts with the firm would be more comprehensive.
+
+### REFERENCES 
+
+1. https://github.com/PacktPublishing/Hands-On-Data-Science-for-Marketing
+2. https://sites.google.com/site/enestemaco/98132628165
+3. https://run.unl.pt/bitstream/10362/62423/1/TAA0027.pdf
+4. https://medium.com/@aritraadhikari.b3/predicting-customer-lifetime-value-for-an-auto-insurance-company-3b24d8bf4e24
+5. https://www.r-graph-gallery.com/ggplot2-package.html
+6. https://bookdown.org/yihui/rmarkdown/basics-examples.html#personalized-mail
+
+
+![](pic20.png)
